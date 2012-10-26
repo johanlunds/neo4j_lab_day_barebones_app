@@ -1,3 +1,5 @@
+# encoding: utf-8
+
 require 'bundler'
 require 'bundler/setup'
 require "barebones_app/version"
@@ -30,7 +32,7 @@ class Tweet
   property :tweet_id
   index :tweet_id
   index :date
-  index :text
+  index :text, type: :fulltext
   has_n :tags
   has_n :mentions
   has_n :links
@@ -74,6 +76,7 @@ class Link
   has_one :redirected_link
 
   rule :all
+  rule(:real) { redirected_link.nil? }
 
   SHORT_URLS = %w[t.co bit.ly ow.ly goo.gl tiny.cc tinyurl.com doiop.com readthisurl.com memurl.com tr.im cli.gs short.ie kl.am idek.net short.ie is.gd hex.io asterl.in j.mp].to_set
 
@@ -131,6 +134,8 @@ end
 #   end
 # end
 
+enable :sessions
+
 get "/" do
   redirect to("/tags")
 end
@@ -158,6 +163,8 @@ resource :tags do
   member do
     get do
       # show post params[:id]
+      @msg = session[:tag_search]
+      session[:tag_search] = nil
       @tag = Tag.load_entity(params[:id])
       slim :show_tag
     end
@@ -186,6 +193,7 @@ resource :tags do
         end
       end
 
+      session[:tag_search] = "Sökning genomförd och klar!"
       redirect to("tags/#{@tag.neo_id}")
     end
   end
@@ -202,7 +210,7 @@ end
 resource :links do
   get do
     # show all posts
-    @links = Link.all
+    @links = Link.real
     slim :links
   end
 end
@@ -210,7 +218,12 @@ end
 resource :tweets do
   get do
     # show all posts
-    @tweets = Tweet.all
+    query = params[:query]
+    if query && query != ''
+      @tweets = Tweet.find("text:#{query}", type: :fulltext)
+    else
+      @tweets = Tweet.all
+    end
     slim :tweets
   end
 end

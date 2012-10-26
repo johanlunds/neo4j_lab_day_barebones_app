@@ -3,11 +3,14 @@ h1 Länkar
 table
   thead
     tr
+      th link
       th short urls
       th redirects to
   tbody
     - for link in @links
       tr
+        td
+          a href=link.url = link.url
         td
           - link.short_urls.each do |l2|
             a href=l2 = l2
