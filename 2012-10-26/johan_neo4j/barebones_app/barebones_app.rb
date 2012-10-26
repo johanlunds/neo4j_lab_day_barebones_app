@@ -38,10 +38,10 @@ class Tweet
   end
 
   def self.parse(item)
-    {:tweet_id => item['id_str'],
+    {:tweet_id => item['id'],
      :text => item['text'],
-     :date => Time.parse(item['created_at']),
-     :link => "http://twitter.com/#{item['from_user']}/statuses/#{item['id_str']}"
+     :date => item['created_at'],
+     :link => "http://twitter.com/#{item['from_user']}/statuses/#{item['id']}"
     }
   end
 end
@@ -97,19 +97,18 @@ resource :tags do
   end
 
   post do
+    tag = nil
     # create new post
     Neo4j::Transaction.run do
-      tag = Tag.create(name: params[:name]) # #new is same as #create
-      redirect to("tags/#{tag.neo_id}")
+      tag = Tag.new(name: params[:name]) # #new is same as #create
     end
-    
+    redirect to("tags/#{tag.neo_id}")
   end
 
   member do
     get do
       # show post params[:id]
-      debugger
-      @tag = Tag.load_entity(params[:id].to_i)
+      @tag = Tag.load_entity(params[:id])
       slim :show_tag
     end
 
@@ -119,27 +118,23 @@ resource :tags do
 
     get :search do
       # show this post's comments
-      @tag = Tag.find(params[:id])
+      @tag = Tag.load_entity(params[:id])
 
-      search = Twitter::Search.new
-      result = search.hashtag(@tag.name)
+      result = Twitter.search("##{@tag.name}", rpp: 100).results
 
-      curr_page = 0
-      while curr_page < 2 do
-        result.each do |item|
-          parsed_tweet_hash = Tweet.parse(item)
-          next if Tweet.find_by_tweet_id(parsed_tweet_hash[:tweet_id])
-          tweet = Tweet.create!(parsed_tweet_hash)
+      debugger
+      puts "hej"
+      result.each do |item|
+        parsed_tweet_hash = Tweet.parse(item)
+        next if Tweet.find_by_tweet_id(parsed_tweet_hash[:tweet_id])
+        tweet = Tweet.create!(parsed_tweet_hash)
 
-          twid = item['from_user'].downcase
-          user = User.find_or_create_by(:twid => twid)
-          user.tweeted << tweet
-          user.save
+        twid = item['from_user'].downcase
+        user = User.find_or_create_by(:twid => twid)
+        user.tweeted << tweet
+        user.save
 
-          parse_tweet(tweet, user)
-        end
-        result.fetch_next_page
-        curr_page += 1
+        parse_tweet(tweet, user)
       end
 
       redirect_to @tag
