@@ -1,6 +1,17 @@
+h1 Taggar
+
+p
+  a href="/tags/new" Ny tagg
+
+p
+  a href="/users" Användare
+p
+  a href="/tweets" Tweets
+p
+  a href="/links" Länkar
+
+
 ul
   - for tag in @tags
     li
       a href="/tags/#{tag.neo_id}" = tag.name 
-
-a href="/tags/new" Ny tagg

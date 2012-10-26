@@ -7,7 +7,9 @@ require 'twitter'
 require 'slim'
 require "sinatra/reloader" if development?
 require 'sinatra/resources'
-#require 'ruby-debug'
+require 'ruby-debug'
+
+require 'net/http'
 
 module BarebonesApp
 
@@ -72,6 +74,43 @@ class Link
   has_one :redirected_link
 
   rule :all
+
+  SHORT_URLS = %w[t.co bit.ly ow.ly goo.gl tiny.cc tinyurl.com doiop.com readthisurl.com memurl.com tr.im cli.gs short.ie kl.am idek.net short.ie is.gd hex.io asterl.in j.mp].to_set
+
+  def to_s
+    url
+  end
+
+  # instead of on_create callback
+  # actual method:  create_redirect_link
+  def init_on_create(*args)
+    super
+    return if !self.class.short_url?(url)
+    uri = URI.parse(url)
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.read_timeout = 200
+    req = Net::HTTP::Head.new(uri.request_uri)
+    res = http.request(req)
+    redirect = res['location']
+    if redirect && url != redirect
+      self.redirected_link = Link.load_entity(Link.get_or_create(:url => redirect.strip).neo_id)
+      puts "JOHAN: found redirected link"
+    end
+    puts "JOHAN: found redirected link. returning"
+  rescue Timeout::Error
+    puts "Can't acccess #{url}"
+  rescue EOFError
+    puts "Can't call #{url}"
+  rescue Net::HTTPBadResponse
+    puts "Bad response for #{url}"
+  end
+
+  private
+
+  def self.short_url?(url)
+    domain = url.split('/')[2]
+    domain && SHORT_URLS.include?(domain)
+  end
 end
 
 class Tag
@@ -91,6 +130,10 @@ end
 #     Tag.new(name: 'b')
 #   end
 # end
+
+get "/" do
+  redirect to("/tags")
+end
 
 resource :tags do
   get do
