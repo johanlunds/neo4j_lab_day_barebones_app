@@ -9,6 +9,7 @@ require 'twitter'
 require 'slim'
 require "sinatra/reloader" if development?
 require 'sinatra/resources'
+require "sinatra/json"
 require 'ruby-debug'
 
 require 'net/http'
@@ -205,6 +206,16 @@ resource :users do
     @users = User.all
     slim :users
   end
+end
+
+get '/users.json' do
+  @users = User.all
+  nodes = @users.map{|u| {:name => u.twid, :value => u.tweeted.count}}
+  links = []
+  @users.each do |user|
+    links += user.knows.map {|other| { :source => nodes.find_index{|n| n[:name] == user.twid}, :target => nodes.find_index{|n| n[:name] == other.twid}}}
+  end
+  json({:nodes => nodes, :links => links})
 end
 
 resource :links do
