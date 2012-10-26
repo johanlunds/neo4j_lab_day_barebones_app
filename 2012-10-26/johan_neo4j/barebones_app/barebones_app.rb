@@ -10,6 +10,7 @@ require 'slim'
 require "sinatra/reloader" if development?
 require 'sinatra/resources'
 require "sinatra/json"
+require 'coffee-script'
 require 'ruby-debug'
 
 require 'net/http'
@@ -139,6 +140,10 @@ enable :sessions
 
 get "/" do
   redirect to("/tags")
+end
+
+get '/application.js' do
+  coffee :application
 end
 
 resource :tags do

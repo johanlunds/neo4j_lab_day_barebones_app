@@ -2,11 +2,23 @@ doctype html
 html
   head
     title Test
+    script type="text/javascript" src="/jquery.js"
     script type="text/javascript" src="/d3.js"
+    script type="text/javascript" src="/d3.geom.js"
     script type="text/javascript" src="/d3.layout.js"
-    script type="text/javascript" src="/d3.geo.js"
+    script type="text/javascript" src="/application.js"
     css:
       table, tr, td, th { border: 1px solid #ccc; }
+
+      circle.node {
+          stroke: #fff;
+          stroke-width: 1.5px;
+      }
+
+      line.link {
+          stroke: #999;
+          stroke-opacity: .6;
+      }
 
   body
     == yield
