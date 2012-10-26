@@ -5,3 +5,9 @@ h1 Tagg
 
 p = @tag.name
 a href="/tags/#{@tag.neo_id}/search" Sök!
+
+h2 tweets
+ul
+  - @tag.tweets.each do |tweet|
+    li
+      a href="/tweets/#{tweet.neo_id}" = tweet.text

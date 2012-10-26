@@ -1,0 +1,27 @@
+h1 Användare
+
+p = @user.twid
+
+h2 used tags
+ul
+  - @user.used_tags.each do |tag|
+    li
+      a href="/tags/#{tag.neo_id}" = tag.name
+
+h2 knows
+ul
+  - @user.knows.each do |user|
+    li
+      a href="/users/#{user.neo_id}" = user.twid
+
+h2 mentioned from
+ul
+  - @user.mentioned_from.each do |tweet|
+    li
+      a href="/tweets/#{tweet.neo_id}" = tweet.text
+
+h2 tweets
+ul
+  - @user.tweeted.each do |tweet|
+    li
+      a href="/tweets/#{tweet.neo_id}" = tweet.text

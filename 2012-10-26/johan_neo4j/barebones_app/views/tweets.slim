@@ -10,6 +10,8 @@ table
       - #th link
       th date
       - # th tweet_id
+      th tags
+      th links
   tbody
     - for tweet in @tweets
       tr
@@ -18,5 +20,13 @@ table
           a href=tweet.link = tweet.text
         - #td = tweet.link
         td = tweet.date
+        td
+          - tweet.tags.each do |tag|
+            a href="/tags/#{tag.neo_id}" = tag.name
+            = ", "
+        td
+          - tweet.links.each do |link|
+            a href="/links/#{link.neo_id}" = link
+            = ", "
         - # td = tweet.tweet_id
 

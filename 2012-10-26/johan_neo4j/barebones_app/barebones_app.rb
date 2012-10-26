@@ -211,6 +211,13 @@ resource :users do
     @users = User.all
     slim :users
   end
+
+  member do
+    get do
+      @user = User.load_entity(params[:id])
+      slim :show_user
+    end
+  end
 end
 
 get '/users.json' do
