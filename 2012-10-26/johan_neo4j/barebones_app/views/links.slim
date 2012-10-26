@@ -1,0 +1,17 @@
+h1 Länkar
+
+table
+  thead
+    tr
+      th short urls
+      th redirects to
+  tbody
+    - for link in @links
+      tr
+        td
+          - link.short_urls.each do |l2|
+            a href=l2 = l2
+            = ", "
+        td
+          - if link.redirected_link
+            a href=link.redirected_link = link.redirected_link
