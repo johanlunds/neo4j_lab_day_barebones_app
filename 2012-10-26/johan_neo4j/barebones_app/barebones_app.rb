@@ -7,7 +7,7 @@ require 'twitter'
 require 'slim'
 require "sinatra/reloader" if development?
 require 'sinatra/resources'
-require 'ruby-debug'
+#require 'ruby-debug'
 
 module BarebonesApp
 
@@ -18,6 +18,7 @@ end
 # rails generate scaffold Link url:string --indices url --has_n tweets:links short_urls:redirected_link --has_one redirected_link
 # rails generate scaffold Tag name:string --indices name --has_n tweets:tags used_by_users:used_tags
 
+puts "hej"
 
 class Tweet
   include Neo4j::NodeMixin
@@ -32,6 +33,8 @@ class Tweet
   has_n :mentions
   has_n :links
   has_one(:tweeted_by).from(:tweeted)
+
+  rule :all
 
   def to_s
     text.gsub(/(@\w+|https?\S+|#\w+)/,"").strip
@@ -48,7 +51,7 @@ end
 
 class User
   include Neo4j::NodeMixin
-  property :twid
+  property :twid, index: :exact, unique: true
   property :link
   index :twid
   has_n :tweeted
@@ -56,20 +59,24 @@ class User
   has_n :knows
   has_n :used_tags
   has_n(:mentioned_from).from(:mentions)
+
+  rule :all
 end
 
 class Link
   include Neo4j::NodeMixin
-  property :url
+  property :url, index: :exact, unique: true
   index :url
   has_n(:tweets).from(:links) 
   has_n(:short_urls).from(:redirected_link)
   has_one :redirected_link
+
+  rule :all
 end
 
 class Tag
   include Neo4j::NodeMixin
-  property :name
+  property :name, index: :exact, unique: true
   index :name
   has_n(:tweets).from(:tags) 
   has_n(:used_by_users).from(:used_tags)
@@ -122,26 +129,48 @@ resource :tags do
 
       result = Twitter.search("##{@tag.name}", rpp: 100).results
 
-      debugger
-      puts "hej"
       result.each do |item|
         parsed_tweet_hash = Tweet.parse(item)
-        next if Tweet.find_by_tweet_id(parsed_tweet_hash[:tweet_id])
-        tweet = Tweet.create!(parsed_tweet_hash)
+        next if Tweet.find(tweet_id: parsed_tweet_hash[:tweet_id]).first
+        Neo4j::Transaction.run do
+          tweet = Tweet.create(parsed_tweet_hash)
 
-        twid = item['from_user'].downcase
-        user = User.find_or_create_by(:twid => twid)
-        user.tweeted << tweet
-        user.save
-
-        parse_tweet(tweet, user)
+          twid = item['from_user'].downcase
+          user = User.load_entity(User.get_or_create(:twid => twid).neo_id)
+          user.tweeted << tweet
+          
+          parse_tweet(tweet, user)
+        end
       end
 
-      redirect_to @tag
+      redirect to("tags/#{@tag.neo_id}")
     end
   end
 end
 
+resource :users do
+  get do
+    # show all posts
+    @users = User.all
+    slim :users
+  end
+end
+
+resource :links do
+  get do
+    # show all posts
+    @links = Link.all
+    slim :links
+  end
+end
+
+resource :tweets do
+  get do
+    # show all posts
+    @tweets = Tweet.all
+    slim :tweets
+  end
+end
 
 
 # post '/tags' do
@@ -154,22 +183,19 @@ def parse_tweet(tweet, user)
       when /^@.+/
         t = t[1..-1].downcase
         next if t.nil?
-        other = User.find_or_create_by(:twid => t)
+        other = User.load_entity(User.get_or_create(:twid => t).neo_id)
         user.knows << other unless t == user.twid || user.knows.include?(other)
-        user.save
         tweet.mentions << other
       when /#.+/
         t = t[1..-1].downcase
-        tag = Tag.find_or_create_by(:name => t)
+        tag = Tag.load_entity(Tag.get_or_create(:name => t).neo_id)
         tweet.tags << tag unless tweet.tags.include?(tag)
         user.used_tags << tag unless user.used_tags.include?(tag)
-        user.save
       when /https?:.+/
-        link = Link.find_or_create_by(:url => t)
+        link = Link.load_entity(Link.get_or_create(:url => t).neo_id)
         tweet.links << (link.redirected_link || link)
     end
   end
-  tweet.save!
 end
 
 
